@@ -192,28 +192,43 @@ function drawEmma(g, frame) {
   const cx = 24;
   const leftFwd = (frame === 'run0' || frame === 'accepted');
 
+  // ── Long wavy hair (drawn first so body renders on top) ──
+  g.fillStyle(HAIR);
+  g.fillEllipse(cx, 7, 24, 16);       // top hair mass
+  // Hair flows down the sides — trails behind (left) when running
+  g.fillRect(cx - 14, 12, 9, 44);     // left hair flow (trailing behind)
+  g.fillRect(cx + 5,  12, 8, 38);     // right hair flow
+  // Wavy curls at the ends — lower on the legs, not at waist
+  g.fillEllipse(cx - 10, 64, 12, 9);  // left curl
+  g.fillEllipse(cx + 9,  60, 11, 9);  // right curl
+
   // ── Head ──
   g.fillStyle(SKIN);
   g.fillCircle(cx, 14, 12);
 
-  // ── Long wavy hair ──
-  g.fillStyle(HAIR);
-  g.fillEllipse(cx, 7, 22, 15);       // top hair
-  g.fillRect(cx - 13, 14, 8, 40);    // left hair flow
-  g.fillRect(cx + 5, 14, 8, 36);     // right hair flow
-  g.fillEllipse(cx - 9, 52, 10, 8);  // hair end curl left
-  g.fillEllipse(cx + 9, 48, 10, 8);  // hair end curl right
-
-  // ── Eyes ──
+  // ── Eyes with highlights ──
   g.fillStyle(DARK);
-  g.fillRect(cx - 6, 11, 4, 4);
-  g.fillRect(cx + 2, 11, 4, 4);
+  g.fillRect(cx - 6, 11, 4, 5);
+  g.fillRect(cx + 2, 11, 4, 5);
+  g.fillStyle(0xFFFFFF);
+  g.fillRect(cx - 5, 11, 2, 2);  // left eye highlight
+  g.fillRect(cx + 3, 11, 2, 2);  // right eye highlight
 
-  // ── Ring sparkle ──
-  g.fillStyle(RING);
-  g.fillCircle(cx - 16, 52, 3);
-  g.fillRect(cx - 18, 50, 2, 2);
-  g.fillRect(cx - 14, 50, 2, 2);
+  // ── Nose dot ──
+  g.fillStyle(0xA06040);
+  g.fillRect(cx - 1, 18, 2, 2);
+
+  // ── Smile ──
+  g.fillStyle(DARK);
+  g.fillRect(cx - 4, 21, 9, 2);   // smile base
+  g.fillRect(cx - 5, 20, 2, 2);   // left corner up
+  g.fillRect(cx + 4, 20, 2, 2);   // right corner up
+  g.fillStyle(0xFFFFFF);
+  g.fillRect(cx - 3, 21, 7, 1);   // teeth glint
+
+  // ── Neck ──
+  g.fillStyle(SKIN);
+  g.fillRect(cx - 4, 26, 8, 4);
 
   // ── Jacket (torso) ──
   g.fillStyle(JACKET);
@@ -236,6 +251,12 @@ function drawEmma(g, frame) {
   g.fillStyle(SKIN);
   g.fillCircle(lABot + 3.5, 48, 4);
   g.fillCircle(rABot + 3.5, 48, 4);
+
+  // ── Ring sparkle on left hand ──
+  g.fillStyle(RING);
+  g.fillCircle(lABot + 3.5, 48, 2);
+  g.fillStyle(0xFFFFFF);
+  g.fillRect(lABot + 2, 46, 1, 1);  // sparkle glint
 
   // Water bottle (offer / run frames)
   if (frame === 'offer' || frame === 'run0' || frame === 'run1') {

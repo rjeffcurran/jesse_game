@@ -347,36 +347,35 @@ export default class GameScene extends Phaser.Scene {
 
     const speed = this.isBoosted ? this.scrollSpeed * BOOST_MULT : this.scrollSpeed;
 
-    if (e.phase === 'approach') {
-      e.x -= (speed + 120) * dt;
-      if (e.x <= JESSE_X + 65) {
-        e.phase = 'offer';
-        e.timer = 0;
+    // Emma runs past continuously — no stopping
+    e.x -= (speed + 100) * dt;
+
+    const nearJesse = e.x > JESSE_X - 30 && e.x < JESSE_X + 90;
+
+    if (e.phase !== 'exit') {
+      if (nearJesse) {
         e.sprite.setTexture('emma_offer');
+      } else {
+        e.sprite.setTexture(`emma_run${e.frame}`);
       }
-    } else if (e.phase === 'offer') {
-      e.x = JESSE_X + 65;
-      e.timer += dt * 1000;
-      if (e.timer >= EMMA_WATER_TIMEOUT) {
-        e.phase = 'exit';
+
+      // Passed Jesse without being tapped — show shrug once
+      if (!e.shrugged && e.x < JESSE_X - 40) {
+        e.shrugged = true;
         e.sprite.setTexture('emma_ignored');
         const shrug = this.add.text(e.x, GROUND_Y - 100, '😞', { fontSize: '24px' })
           .setOrigin(0.5, 1);
         this.tweens.add({ targets: shrug, y: GROUND_Y - 150, alpha: 0, duration: 800,
           onComplete: () => shrug.destroy() });
       }
-    } else if (e.phase === 'exit') {
-      e.x -= (speed + 80) * dt;
-      if (e.x < -60) {
-        e.sprite.destroy();
-        this.emma = null;
-      }
     }
 
-    if (this.emma) {
-      e.sprite.x = e.x;
-      if (e.phase === 'approach') e.sprite.setTexture(`emma_run${e.frame}`);
+    if (e.x < -60) {
+      e.sprite.destroy();
+      this.emma = null;
     }
+
+    if (this.emma) e.sprite.x = e.x;
   }
 
   updateNala(dt) {
@@ -494,12 +493,15 @@ export default class GameScene extends Phaser.Scene {
         return;
       }
     }
-    // Check Emma tap
-    if (this.emma && this.emma.phase === 'offer') {
-      const ed = Phaser.Math.Distance.Between(pointer.x, pointer.y, this.emma.x, GROUND_Y - 50);
-      if (ed < 60) {
-        this.acceptEmmaWater();
-        return;
+    // Check Emma tap — tappable while she's near Jesse
+    if (this.emma && this.emma.phase !== 'exit') {
+      const nearJesse = this.emma.x > JESSE_X - 30 && this.emma.x < JESSE_X + 90;
+      if (nearJesse) {
+        const ed = Phaser.Math.Distance.Between(pointer.x, pointer.y, this.emma.x, GROUND_Y - 50);
+        if (ed < 80) {
+          this.acceptEmmaWater();
+          return;
+        }
       }
     }
   }
