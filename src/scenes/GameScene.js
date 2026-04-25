@@ -1,21 +1,22 @@
 import Phaser from 'phaser';
 import {
   W, H, GROUND_Y, JESSE_X, LEVEL_PIXELS,
-  BEER_START, BEER_JEFF, BEER_KARL, BEER_EMMA,
-  BASE_SCROLL, MAX_SCROLL,
   GRAVITY, JUMP_VEL,
-  JEFF_EXTRA_SPEED,
   BOOST_MULT, BOOST_DURATION, NALA_CATCH_WINDOW,
-  EMMA_WATER_TIMEOUT,
+  DIFFICULTY,
 } from '../constants.js';
 
 export default class GameScene extends Phaser.Scene {
   constructor() { super({ key: 'GameScene' }); }
 
-  init() {
-    this.beer        = BEER_START;
+  init(data) {
+    const diff       = (data && data.difficulty) || 'medium';
+    this.diff        = DIFFICULTY[diff] || DIFFICULTY.medium;
+    this.diffName    = diff;
+
+    this.beer        = this.diff.beerStart;
     this.scrolled    = 0;
-    this.scrollSpeed = BASE_SCROLL;
+    this.scrollSpeed = this.diff.baseScroll;
     this.gameOver    = false;
     this.won         = false;
     this.isBoosted   = false;
@@ -165,7 +166,7 @@ export default class GameScene extends Phaser.Scene {
 
   updateDifficulty() {
     const progress = Phaser.Math.Clamp(this.scrolled / LEVEL_PIXELS, 0, 1);
-    this.scrollSpeed = BASE_SCROLL + progress * (MAX_SCROLL - BASE_SCROLL);
+    this.scrollSpeed = this.diff.baseScroll + progress * (this.diff.maxScroll - this.diff.baseScroll);
   }
 
   updateScroll(dt) {
@@ -295,7 +296,7 @@ export default class GameScene extends Phaser.Scene {
   updateJeffs(dt) {
     const speed = this.isBoosted ? this.scrollSpeed * BOOST_MULT : this.scrollSpeed;
     this.jeffs = this.jeffs.filter(j => {
-      j.x -= (speed + JEFF_EXTRA_SPEED) * dt;
+      j.x -= (speed + this.diff.jeffExtraSpeed) * dt;
       j.sprite.x = j.x;
 
       // Animate Jeff
@@ -325,7 +326,7 @@ export default class GameScene extends Phaser.Scene {
       k.animTimer = 0;
     }
 
-    k.x -= (speed + JEFF_EXTRA_SPEED) * dt;
+    k.x -= (speed + this.diff.jeffExtraSpeed * 1.15) * dt;
     k.sprite.x = k.x;
     k.sprite.setTexture(k.hit ? 'karl_ditched' : `karl_jog${k.frame}`);
 
@@ -445,8 +446,8 @@ export default class GameScene extends Phaser.Scene {
         if (this.isGrounded || this.jesse.y > GROUND_Y - 50) {
           j.hit = true;
           j.sprite.setTexture('jeff_offer');
-          this.beer = Math.min(100, this.beer + BEER_JEFF);
-          this.showBeerHit(j.x, '+' + BEER_JEFF + '%', '#FF4400');
+          this.beer = Math.min(100, this.beer + this.diff.beerJeff);
+          this.showBeerHit(j.x, '+' + this.diff.beerJeff + '%', '#FF4400');
           this.cameras.main.shake(250, 0.01);
         }
       }
@@ -458,8 +459,8 @@ export default class GameScene extends Phaser.Scene {
       if (!this.isSliding && overlaps(jBox, kBox)) {
         if (this.isGrounded || this.jesse.y > GROUND_Y - 50) {
           this.karl.hit = true;
-          this.beer = Math.min(100, this.beer + BEER_KARL);
-          this.showBeerHit(this.karl.x, '+' + BEER_KARL + '% 🍺', '#F5B800');
+          this.beer = Math.min(100, this.beer + this.diff.beerKarl);
+          this.showBeerHit(this.karl.x, '+' + this.diff.beerKarl + '% 🍺', '#F5B800');
           this.cameras.main.shake(250, 0.01);
         }
       }
@@ -524,8 +525,8 @@ export default class GameScene extends Phaser.Scene {
     this.emma.phase = 'exit';
     this.emma.sprite.setTexture('emma_accepted');
     this.emmaCount++;
-    this.beer = Math.max(0, this.beer - BEER_EMMA);
-    this.showBeerHit(JESSE_X, '-' + BEER_EMMA + '% 💧', '#44AAFF');
+    this.beer = Math.max(0, this.beer - this.diff.beerEmma);
+    this.showBeerHit(JESSE_X, '-' + this.diff.beerEmma + '% 💧', '#44AAFF');
 
     // Flash blue hydration
     const overlay = this.add.rectangle(0, 0, W, H, 0x0088CC, 0.18).setOrigin(0, 0);
@@ -539,27 +540,28 @@ export default class GameScene extends Phaser.Scene {
     const progress = Phaser.Math.Clamp(this.scrolled / LEVEL_PIXELS, 0, 1);
     const dtMs     = dt * 1000;
 
-    // Jeff: interval 7s → 2.8s as progress increases
-    const jeffInterval = 7000 - progress * 4200;
+    // Jeff: interval scales from start → end as level progresses
+    const d = this.diff;
+    const jeffInterval = d.jeffIntervalStart - progress * (d.jeffIntervalStart - d.jeffIntervalEnd);
     this.jeffTimer -= dtMs;
     if (this.jeffTimer <= 0) {
       this.spawnJeff();
       this.jeffTimer = jeffInterval + Phaser.Math.Between(-400, 400);
     }
 
-    // Karl: interval 22s → 10s; only if no active Karl
-    const karlInterval = 22000 - progress * 12000;
+    // Karl: interval scales start → end; only if no active Karl
+    const karlInterval = d.karlIntervalStart - progress * (d.karlIntervalStart - d.karlIntervalEnd);
     this.karlTimer -= dtMs;
     if (this.karlTimer <= 0) {
       if (!this.karl) this.spawnKarl();
       this.karlTimer = karlInterval + Phaser.Math.Between(-1000, 1000);
     }
 
-    // Emma: interval 16s → 14s
+    // Emma: less frequent on hard
     this.emmaTimer -= dtMs;
     if (this.emmaTimer <= 0) {
       if (!this.emma) this.spawnEmma();
-      this.emmaTimer = Phaser.Math.Between(14000, 20000);
+      this.emmaTimer = Phaser.Math.Between(d.emmaIntervalMin, d.emmaIntervalMax);
     }
 
     // Nala: interval fixed ~38s, sparingly
@@ -569,11 +571,11 @@ export default class GameScene extends Phaser.Scene {
       this.nalaTimer = Phaser.Math.Between(32000, 46000);
     }
 
-    // Obstacles: police cars, food carts, dumpsters
+    // Obstacles: more frequent on hard
     this.obstacleTimer -= dtMs;
     if (this.obstacleTimer <= 0) {
       this.spawnObstacle();
-      this.obstacleTimer = Phaser.Math.Between(3000, 6000);
+      this.obstacleTimer = Phaser.Math.Between(d.obstacleIntervalMin, d.obstacleIntervalMax);
     }
   }
 
@@ -682,7 +684,7 @@ export default class GameScene extends Phaser.Scene {
     this.time.delayedCall(1200, () => {
       this.cameras.main.fadeOut(500, 0, 0, 0);
       this.time.delayedCall(500, () => {
-        this.scene.start('EndScene', { win: false, emmaCount: this.emmaCount, nalaCount: this.nalaCount });
+        this.scene.start('EndScene', { win: false, emmaCount: this.emmaCount, nalaCount: this.nalaCount, difficulty: this.diffName });
       });
     });
   }
@@ -692,7 +694,7 @@ export default class GameScene extends Phaser.Scene {
     this.won = true;
     this.cameras.main.fadeOut(600, 0, 0, 0);
     this.time.delayedCall(600, () => {
-      this.scene.start('EndScene', { win: true, emmaCount: this.emmaCount, nalaCount: this.nalaCount });
+      this.scene.start('EndScene', { win: true, emmaCount: this.emmaCount, nalaCount: this.nalaCount, difficulty: this.diffName });
     });
   }
 }

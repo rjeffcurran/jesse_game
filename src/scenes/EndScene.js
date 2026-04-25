@@ -8,6 +8,7 @@ export default class EndScene extends Phaser.Scene {
     this.win        = data.win        ?? false;
     this.emmaCount  = data.emmaCount  ?? 0;
     this.nalaCount  = data.nalaCount  ?? 0;
+    this.difficulty = data.difficulty ?? 'medium';
   }
 
   create() {
@@ -32,7 +33,7 @@ export default class EndScene extends Phaser.Scene {
     btn.on('pointerout',  () => btn.setFillStyle(0xF5C842));
     btn.on('pointerdown', () => {
       this.cameras.main.fadeOut(300, 0, 0, 0);
-      this.time.delayedCall(300, () => this.scene.start('GameScene'));
+      this.time.delayedCall(300, () => this.scene.start('StartScene', { difficulty: this.difficulty }));
     });
 
     this.tweens.add({
